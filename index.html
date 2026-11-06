@@ -401,6 +401,7 @@
   </div>
 
   <script>
+    const API_BASE = "https://pvrpedaiaztpczedavug.supabase.co/functions/v1/dashboard";
     let rawData = {
       conversations: [],
       stats: {},
@@ -489,6 +490,7 @@
           document.getElementById('loginModal').classList.add('hidden');
           fetchData(true);
         } else {
+          errEl.textContent = 'Senha incorreta. Tente novamente.';
           errEl.classList.remove('hidden');
         }
       } catch (err) {
@@ -727,7 +729,7 @@
       }
 
       try {
-        const res = await fetch(`?action=messages&phone=${encodeURIComponent(phone)}`, {
+        const res = await fetch(API_BASE + `?action=messages&phone=${encodeURIComponent(phone)}`, {
           headers: { 'x-dashboard-password': pwd }
         });
         const msgData = await res.json();
