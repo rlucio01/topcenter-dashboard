@@ -167,6 +167,23 @@
 
     <!-- CONTROLS -->
     <div class="flex items-center gap-3">
+      <!-- BOT ON/OFF SWITCH -->
+      <div id="botControlContainer" class="flex items-center gap-2 bg-wa-card border border-wa-border px-3 py-1.5 rounded-xl text-xs">
+        <div class="flex items-center gap-1.5">
+          <span id="botStatusDot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+          <span id="botStatusText" class="font-medium text-rose-300">Bot: Pausado</span>
+        </div>
+        <button 
+          id="toggleBotBtn" 
+          onclick="toggleBotStatus()" 
+          title="Clique para ligar ou pausar o bot"
+          class="ml-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm"
+        >
+          <i data-lucide="power" class="w-3.5 h-3.5"></i>
+          <span id="toggleBotBtnLabel">Ligar Bot</span>
+        </button>
+      </div>
+
       <div class="flex items-center gap-2 bg-wa-card border border-wa-border px-3 py-1.5 rounded-xl text-xs text-wa-muted">
         <label class="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" id="autoRefreshToggle" checked onchange="toggleAutoRefresh()" class="rounded bg-wa-dark border-wa-border text-wa-lightgreen focus:ring-0" />
@@ -203,6 +220,18 @@
       </button>
     </div>
   </header>
+
+  <!-- BOT PAUSED ALERT BANNER -->
+  <div id="botPausedBanner" class="hidden bg-amber-950/80 border-b border-amber-500/40 px-6 py-2.5 text-xs text-amber-200 flex items-center justify-between shrink-0 shadow-inner">
+    <div class="flex items-center gap-2.5">
+      <i data-lucide="pause-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>
+      <span><strong>Modo Fim de Semana / Bot Pausado:</strong> O bot está em modo silencioso e não responderá a novas mensagens no WhatsApp. Todas as conversas continuam sendo registradas aqui no painel em tempo real.</span>
+    </div>
+    <button onclick="toggleBotStatus()" class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-3 py-1 rounded-lg text-xs transition flex items-center gap-1.5 shrink-0 ml-4">
+      <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+      Reativar Atendimento Agora
+    </button>
+  </div>
 
   <!-- MAIN 3-COLUMN CONTENT -->
   <div class="flex-1 flex overflow-hidden">
@@ -536,6 +565,7 @@
         rawData = data;
 
         updateKPIs(data.stats);
+        updateBotStatusUI(data.botStatus);
         renderConversationsList();
 
         if (activePhone) {
@@ -546,6 +576,83 @@
       } finally {
         isFetching = false;
         if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+      }
+    }
+
+    
+    let currentBotActive = true;
+
+    function updateBotStatusUI(botStatus) {
+      if (!botStatus) return;
+      currentBotActive = Boolean(botStatus.active);
+
+      const dot = document.getElementById('botStatusDot');
+      const text = document.getElementById('botStatusText');
+      const btn = document.getElementById('toggleBotBtn');
+      const btnLabel = document.getElementById('toggleBotBtnLabel');
+      const banner = document.getElementById('botPausedBanner');
+
+      if (!dot || !text || !btn || !btnLabel) return;
+
+      if (currentBotActive) {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
+        text.textContent = 'Bot: Ativo';
+        text.className = 'font-medium text-emerald-300';
+        btn.className = 'ml-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 shadow-sm';
+        btnLabel.textContent = 'Pausar Bot';
+        btn.setAttribute('title', 'Clique para pausar o robô');
+        if (banner) banner.classList.add('hidden');
+      } else {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+        text.textContent = 'Bot: Pausado';
+        text.className = 'font-medium text-rose-300';
+        btn.className = 'ml-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-sm';
+        btnLabel.textContent = 'Ligar Bot';
+        btn.setAttribute('title', 'Clique para religar o robô');
+        if (banner) banner.classList.remove('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    async function toggleBotStatus() {
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+
+      const targetActive = !currentBotActive;
+      const confirmMsg = targetActive
+        ? 'Deseja REATIVAR o bot agora?\n\nO robô voltará a responder automaticamente a todas as mensagens no WhatsApp.'
+        : 'Deseja PAUSAR o bot agora?\n\nO robô deixará de responder às pessoas no WhatsApp (modo silencioso). As mensagens recebidas continuarão sendo registradas aqui no painel em tempo real.';
+
+      if (!confirm(confirmMsg)) return;
+
+      const btn = document.getElementById('toggleBotBtn');
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch(API_BASE + '?action=toggle_bot', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dashboard-password': pwd
+          },
+          body: JSON.stringify({
+            active: targetActive,
+            motivo: targetActive ? 'reativado pelo painel' : 'pausado pelo painel para o fim de semana'
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          currentBotActive = data.active;
+          updateBotStatusUI({ active: data.active });
+        } else {
+          alert('Erro ao alterar status do bot: ' + (data.error || 'Falha na conexão'));
+        }
+      } catch (err) {
+        alert('Erro ao conectar ao servidor para alterar status do bot.');
+      } finally {
+        if (btn) btn.disabled = false;
+        fetchData(false);
       }
     }
 
