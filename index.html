@@ -120,6 +120,36 @@
           </p>
         </div>
       </div>
+
+      <!-- NAVIGATION TABS -->
+      <nav class="hidden lg:flex items-center gap-1 bg-wa-dark/70 p-1 rounded-xl border border-wa-border/60 shadow-inner ml-4">
+        <button 
+          id="navTabChat" 
+          onclick="switchTab('chat')" 
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm"
+        >
+          <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+          <span>Atendimento & SAC</span>
+        </button>
+        <button 
+          id="navTabLojas" 
+          onclick="switchTab('lojas')" 
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition text-wa-muted hover:text-white hover:bg-wa-card border border-transparent"
+        >
+          <i data-lucide="store" class="w-3.5 h-3.5"></i>
+          <span>Lojas & Salas</span>
+          <span id="tabLojasBadge" class="bg-wa-border text-[10px] text-slate-300 px-1.5 py-0.2 rounded-full font-bold">356</span>
+        </button>
+        <button 
+          id="navTabEvolution" 
+          onclick="switchTab('evolution')" 
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition text-wa-muted hover:text-white hover:bg-wa-card border border-transparent"
+        >
+          <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+          <span>Conexão WhatsApp</span>
+          <span id="tabEvoDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        </button>
+      </nav>
     </div>
 
     <!-- KPI BADGES -->
@@ -233,8 +263,8 @@
     </button>
   </div>
 
-  <!-- MAIN 3-COLUMN CONTENT -->
-  <div class="flex-1 flex overflow-hidden">
+  <!-- MAIN 3-COLUMN CONTENT (VIEW 1) -->
+  <div id="viewChat" class="flex-1 flex overflow-hidden">
 
     <!-- COLUMN 1: CONVERSATIONS LIST -->
     <aside class="w-full sm:w-80 md:w-96 bg-wa-panel border-r border-wa-border flex flex-col shrink-0">
@@ -427,7 +457,213 @@
       </div>
     </aside>
 
-  </div>
+  </div><!-- END #viewChat -->
+
+  <!-- VIEW 2: GESTAO DE LOJAS E SALAS -->
+  <div id="viewLojas" class="hidden flex-1 flex-col overflow-hidden bg-wa-dark p-6">
+    <!-- Top actions bar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="store" class="w-6 h-6 text-emerald-400"></i>
+            <span>Lojas cadastradas</span>
+          </h2>
+          <span id="lojasTotalBadge" class="bg-wa-card text-emerald-400 border border-wa-border px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm">
+            356
+          </span>
+        </div>
+        <p class="text-xs text-wa-muted mt-1">
+          Catálogo oficial de lojas, salas e quiosques consultado pela inteligência artificial.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <button 
+          onclick="exportLojasCSV()"
+          class="bg-wa-card hover:bg-wa-hover border border-wa-border text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-medium transition flex items-center gap-2 shadow-sm"
+        >
+          <i data-lucide="download" class="w-4 h-4 text-emerald-400"></i>
+          <span>Exportar CSV</span>
+        </button>
+
+        <button 
+          onclick="openImportCSVModal()"
+          class="bg-wa-card hover:bg-wa-hover border border-wa-border text-slate-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-medium transition flex items-center gap-2 shadow-sm"
+        >
+          <i data-lucide="upload" class="w-4 h-4 text-blue-400"></i>
+          <span>Importar CSV</span>
+        </button>
+
+        <button 
+          onclick="openCreateLojaModal()"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-xl text-xs transition flex items-center gap-2 shadow-md"
+        >
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Nova loja</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter toolbar -->
+    <div class="bg-wa-panel border border-wa-border rounded-2xl p-4 mb-4 grid grid-cols-1 md:grid-cols-12 gap-3 shadow-sm">
+      <div class="md:col-span-6 relative">
+        <i data-lucide="search" class="w-4 h-4 text-wa-muted absolute left-3.5 top-3"></i>
+        <input 
+          type="text" 
+          id="searchLojaInput" 
+          oninput="handleLojasFilter()" 
+          placeholder="Buscar por nome, número, sala, atividade, segmento..." 
+          class="w-full bg-wa-dark border border-wa-border rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-wa-muted focus:outline-none focus:border-wa-lightgreen transition"
+        />
+      </div>
+
+      <div class="md:col-span-3">
+        <select 
+          id="filterAtividadeSelect" 
+          onchange="handleLojasFilter()" 
+          class="w-full bg-wa-dark border border-wa-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-wa-lightgreen transition"
+        >
+          <option value="">Atividade: Todas</option>
+          <option value="Comércio">Comércio</option>
+          <option value="Serviço">Serviço</option>
+        </select>
+      </div>
+
+      <div class="md:col-span-3">
+        <select 
+          id="filterSegmentoSelect" 
+          onchange="handleLojasFilter()" 
+          class="w-full bg-wa-dark border border-wa-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-wa-lightgreen transition"
+        >
+          <option value="">Segmento: Todos</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Lojas Table Container -->
+    <div class="flex-1 overflow-auto bg-wa-panel border border-wa-border rounded-2xl shadow-sm">
+      <table class="w-full text-left border-collapse text-xs">
+        <thead class="bg-wa-card text-wa-muted uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-wa-border">
+          <tr>
+            <th class="py-3 px-4 w-16">ID</th>
+            <th class="py-3 px-4 w-28">Número</th>
+            <th class="py-3 px-4 w-24">Sala</th>
+            <th class="py-3 px-4">Nome da Loja</th>
+            <th class="py-3 px-4 w-32">Atividade</th>
+            <th class="py-3 px-4">Segmento</th>
+            <th class="py-3 px-4 w-24 text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="lojasTableBody" class="divide-y divide-wa-border/50 text-slate-200">
+          <tr>
+            <td colspan="7" class="py-12 text-center text-wa-muted">
+              <span class="animate-spin inline-block mr-2">⏳</span> Carregando catálogo de lojas...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- END #viewLojas -->
+
+  <!-- VIEW 3: EVOLUTION API WHATSAPP CONNECTION -->
+  <div id="viewEvolution" class="hidden flex-1 overflow-auto bg-wa-dark p-6 flex flex-col items-center justify-center">
+    <div class="max-w-xl w-full bg-wa-panel border border-wa-border rounded-2xl p-8 shadow-2xl">
+      <div class="flex items-center justify-between pb-6 border-b border-wa-border">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <i data-lucide="smartphone" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-white">Conexão WhatsApp</h2>
+            <p class="text-xs text-wa-muted">Gerenciamento da instância Evolution do robô Top Center</p>
+          </div>
+        </div>
+
+        <button 
+          onclick="fetchEvolutionStatus(true)" 
+          title="Verificar status agora"
+          class="bg-wa-card hover:bg-wa-hover border border-wa-border p-2.5 rounded-xl text-wa-muted hover:text-white transition"
+        >
+          <i id="evoRefreshIcon" data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Status Card -->
+      <div class="my-6 p-4 rounded-xl bg-wa-card border border-wa-border flex items-center justify-between">
+        <div>
+          <p class="text-[10px] text-wa-muted uppercase tracking-wider font-semibold">Status da Sessão</p>
+          <div class="flex items-center gap-2 mt-1">
+            <span id="evoStatusDot" class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="evoStatusText" class="text-sm font-bold text-emerald-400">Verificando...</span>
+          </div>
+        </div>
+        <div class="text-right">
+          <p class="text-[10px] text-wa-muted uppercase tracking-wider font-semibold">Nome da Conta</p>
+          <p id="evoAccountName" class="text-xs font-medium text-slate-200 mt-1">Sac Top Center Ipanema</p>
+        </div>
+      </div>
+
+      <!-- Info Details -->
+      <div class="grid grid-cols-2 gap-3 text-xs mb-6">
+        <div class="p-3 bg-wa-dark/70 rounded-xl border border-wa-border/60">
+          <span class="text-wa-muted text-[10px] uppercase font-semibold block">Número do WhatsApp</span>
+          <span id="evoPhoneNumber" class="font-bold text-white mt-0.5 block">(21) 98071-9848</span>
+        </div>
+        <div class="p-3 bg-wa-dark/70 rounded-xl border border-wa-border/60">
+          <span class="text-wa-muted text-[10px] uppercase font-semibold block">Instância Conectada</span>
+          <span id="evoInstanceName" class="font-mono text-emerald-300 mt-0.5 block">topcenter_LG_teste</span>
+        </div>
+      </div>
+
+      <!-- QR Code Display Area -->
+      <div id="evoQrContainer" class="hidden flex-col items-center justify-center p-6 bg-wa-dark border border-dashed border-wa-border rounded-2xl mb-6">
+        <p class="text-xs text-amber-300 font-medium mb-3 flex items-center gap-1.5">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+          <span>Aparelho desconectado. Leia o QR Code abaixo com o celular:</span>
+        </p>
+        <div id="evoQrImageWrapper" class="bg-white p-3 rounded-xl shadow-lg">
+          <img id="evoQrImage" src="" alt="QR Code WhatsApp" class="w-56 h-56 object-contain" />
+        </div>
+        <p class="text-[11px] text-wa-muted text-center mt-3 max-w-sm">
+          No celular com o WhatsApp aberto, acesse: <strong>Aparelhos Conectados > Conectar um aparelho</strong> e aponte para a imagem.
+        </p>
+      </div>
+
+      <!-- Connected Success Display Area -->
+      <div id="evoConnectedCard" class="flex flex-col items-center justify-center p-6 bg-emerald-950/20 border border-emerald-500/20 rounded-2xl mb-6 text-center">
+        <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-2">
+          <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+        </div>
+        <p class="text-sm font-bold text-white">Instância 100% Conectada e Operacional</p>
+        <p class="text-xs text-wa-muted mt-1 max-w-sm">
+          O aparelho está emparelhado e apto a receber e enviar mensagens do WhatsApp normalmente.
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-between gap-3 pt-4 border-t border-wa-border">
+        <button 
+          id="btnEvoGetQr" 
+          onclick="fetchEvolutionQR()" 
+          class="bg-wa-card hover:bg-wa-hover border border-wa-border text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2"
+        >
+          <i data-lucide="qr-code" class="w-4 h-4 text-emerald-400"></i>
+          <span>Gerar QR Code</span>
+        </button>
+
+        <button 
+          id="btnEvoDisconnect" 
+          onclick="confirmDisconnectEvolution()" 
+          class="bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2"
+        >
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+          <span>Desconectar Aparelho</span>
+        </button>
+      </div>
+    </div>
+  </div><!-- END #viewEvolution -->
+
 
   <script>
     const API_BASE = "https://pvrpedaiaztpczedavug.supabase.co/functions/v1/dashboard";
@@ -973,6 +1209,675 @@
         startAutoRefresh();
       }
     });
+  
+    // ==========================================
+    // TAB NAVIGATION
+    // ==========================================
+    let currentTab = 'chat';
+
+    function switchTab(tab) {
+      currentTab = tab;
+
+      const viewChat = document.getElementById('viewChat');
+      const viewLojas = document.getElementById('viewLojas');
+      const viewEvolution = document.getElementById('viewEvolution');
+
+      const tabChat = document.getElementById('navTabChat');
+      const tabLojas = document.getElementById('navTabLojas');
+      const tabEvolution = document.getElementById('navTabEvolution');
+
+      // Hide all views
+      viewChat.classList.add('hidden');
+      viewLojas.classList.add('hidden');
+      viewEvolution.classList.add('hidden');
+
+      // Reset tab button styles
+      [tabChat, tabLojas, tabEvolution].forEach(btn => {
+        if (!btn) return;
+        btn.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition text-wa-muted hover:text-white hover:bg-wa-card border border-transparent';
+      });
+
+      const activeClasses = 'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm';
+
+      if (tab === 'chat') {
+        viewChat.classList.remove('hidden');
+        tabChat.className = activeClasses;
+      } else if (tab === 'lojas') {
+        viewLojas.classList.remove('hidden');
+        tabLojas.className = activeClasses;
+        if (allLojas.length === 0) fetchLojas();
+      } else if (tab === 'evolution') {
+        viewEvolution.classList.remove('hidden');
+        tabEvolution.className = activeClasses;
+        fetchEvolutionStatus();
+      }
+
+      lucide.createIcons();
+    }
+
+    // ==========================================
+    // LOJAS (STORES) MANAGEMENT
+    // ==========================================
+    let allLojas = [];
+    let pendingCSVRows = [];
+
+    async function fetchLojas() {
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+
+      try {
+        const res = await fetch(API_BASE + '?action=lojas', {
+          headers: { 'x-dashboard-password': pwd }
+        });
+        const data = await res.json();
+        allLojas = data.lojas || [];
+
+        // Update counts
+        const count = allLojas.length;
+        document.getElementById('lojasTotalBadge').textContent = count;
+        const tabBadge = document.getElementById('tabLojasBadge');
+        if (tabBadge) tabBadge.textContent = count;
+
+        populateSegmentoFilter();
+        handleLojasFilter();
+      } catch (err) {
+        console.error('Erro ao carregar lojas:', err);
+      }
+    }
+
+    function populateSegmentoFilter() {
+      const select = document.getElementById('filterSegmentoSelect');
+      if (!select) return;
+
+      const segments = new Set();
+      allLojas.forEach(l => {
+        if (l.segmento && l.segmento.trim()) segments.add(l.segmento.trim());
+      });
+
+      const sorted = Array.from(segments).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      select.innerHTML = '<option value="">Segmento: Todos</option>' + 
+        sorted.map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+
+    function handleLojasFilter() {
+      const term = (document.getElementById('searchLojaInput').value || '').toLowerCase().trim();
+      const atividade = document.getElementById('filterAtividadeSelect').value;
+      const segmento = document.getElementById('filterSegmentoSelect').value;
+
+      const filtered = allLojas.filter(l => {
+        const matchSearch = !term ||
+          (l.nome && l.nome.toLowerCase().includes(term)) ||
+          (l.numero && l.numero.toLowerCase().includes(term)) ||
+          (l.sala && l.sala.toLowerCase().includes(term)) ||
+          (l.atividade && l.atividade.toLowerCase().includes(term)) ||
+          (l.segmento && l.segmento.toLowerCase().includes(term));
+
+        const matchAtiv = !atividade || (l.atividade && l.atividade.toLowerCase() === atividade.toLowerCase());
+        const matchSeg = !segmento || (l.segmento && l.segmento === segmento);
+
+        return matchSearch && matchAtiv && matchSeg;
+      });
+
+      renderLojasTable(filtered);
+    }
+
+    function renderLojasTable(list) {
+      const tbody = document.getElementById('lojasTableBody');
+      if (!tbody) return;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-12 text-center text-wa-muted">
+              Nenhuma loja encontrada para os filtros selecionados.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = list.map(l => `
+        <tr class="hover:bg-wa-card/60 transition group">
+          <td class="py-3 px-4 text-wa-muted text-[11px] font-mono">${l.id}</td>
+          <td class="py-3 px-4 font-bold text-white">${l.numero || '—'}</td>
+          <td class="py-3 px-4 text-wa-muted">${l.sala || '—'}</td>
+          <td class="py-3 px-4 font-medium text-slate-200">${l.nome || '—'}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+              (l.atividade || '').toLowerCase().includes('comér') || (l.atividade || '').toLowerCase().includes('comer')
+                ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+            }">
+              ${l.atividade || 'Geral'}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-wa-muted">${l.segmento || '—'}</td>
+          <td class="py-3 px-4 text-right">
+            <div class="flex items-center justify-end gap-1.5 opacity-80 group-hover:opacity-100 transition">
+              <button 
+                onclick="openEditLojaModal(${l.id})" 
+                title="Editar loja"
+                class="p-1.5 rounded-lg bg-wa-card hover:bg-wa-hover text-slate-300 hover:text-emerald-400 border border-wa-border transition"
+              >
+                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+              </button>
+              <button 
+                onclick="deleteLoja(${l.id}, '${(l.nome || '').replace(/'/g, "\'")}')" 
+                title="Excluir loja"
+                class="p-1.5 rounded-lg bg-wa-card hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 border border-wa-border hover:border-rose-500/30 transition"
+              >
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    // Modal Create / Edit Loja
+    function openCreateLojaModal() {
+      document.getElementById('lojaModalTitle').innerHTML = `
+        <i data-lucide="plus-circle" class="w-5 h-5 text-emerald-400"></i>
+        <span>Nova Loja</span>
+      `;
+      document.getElementById('lojaFormId').value = '';
+      document.getElementById('lojaFormNumero').value = '';
+      document.getElementById('lojaFormSala').value = '';
+      document.getElementById('lojaFormNome').value = '';
+      document.getElementById('lojaFormAtividade').value = 'Comércio';
+      document.getElementById('lojaFormSegmento').value = '';
+      document.getElementById('lojaFormError').classList.add('hidden');
+      document.getElementById('lojaModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function openEditLojaModal(id) {
+      const loja = allLojas.find(l => l.id === id);
+      if (!loja) return;
+
+      document.getElementById('lojaModalTitle').innerHTML = `
+        <i data-lucide="pencil" class="w-5 h-5 text-emerald-400"></i>
+        <span>Editar Loja #${loja.id}</span>
+      `;
+      document.getElementById('lojaFormId').value = loja.id;
+      document.getElementById('lojaFormNumero').value = loja.numero || '';
+      document.getElementById('lojaFormSala').value = loja.sala || '';
+      document.getElementById('lojaFormNome').value = loja.nome || '';
+      document.getElementById('lojaFormAtividade').value = (loja.atividade || 'Comércio').toLowerCase().includes('serv') ? 'Serviço' : 'Comércio';
+      document.getElementById('lojaFormSegmento').value = loja.segmento || '';
+      document.getElementById('lojaFormError').classList.add('hidden');
+      document.getElementById('lojaModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeLojaModal() {
+      document.getElementById('lojaModal').classList.add('hidden');
+    }
+
+    async function handleSaveLoja(e) {
+      e.preventDefault();
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+
+      const id = document.getElementById('lojaFormId').value;
+      const numero = document.getElementById('lojaFormNumero').value.trim();
+      const sala = document.getElementById('lojaFormSala').value.trim();
+      const nome = document.getElementById('lojaFormNome').value.trim();
+      const atividade = document.getElementById('lojaFormAtividade').value;
+      const segmento = document.getElementById('lojaFormSegmento').value.trim();
+
+      const btn = document.getElementById('lojaFormSubmitBtn');
+      const errEl = document.getElementById('lojaFormError');
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+
+      const action = id ? 'update_loja' : 'create_loja';
+      const payload = { numero, sala, nome, atividade, segmento };
+      if (id) payload.id = Number(id);
+
+      try {
+        const res = await fetch(API_BASE + '?action=' + action, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dashboard-password': pwd
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          closeLojaModal();
+          fetchLojas();
+        } else {
+          errEl.textContent = data.error || 'Erro ao salvar loja.';
+          errEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        errEl.textContent = 'Erro de conexão ao salvar loja.';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteLoja(id, nome) {
+      if (!confirm(`Deseja realmente excluir a loja "${nome}" (ID ${id})? Esta ação não pode ser desfeita.`)) {
+        return;
+      }
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+
+      try {
+        const res = await fetch(API_BASE + '?action=delete_loja', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dashboard-password': pwd
+          },
+          body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          fetchLojas();
+        } else {
+          alert('Erro ao excluir loja: ' + (data.error || 'Falha'));
+        }
+      } catch (err) {
+        alert('Erro ao conectar ao servidor para excluir loja.');
+      }
+    }
+
+    function exportLojasCSV() {
+      if (allLojas.length === 0) {
+        alert('Nenhuma loja cadastrada para exportar.');
+        return;
+      }
+
+      const headers = ['id', 'numero', 'sala', 'nome', 'atividade', 'segmento'];
+      const rows = allLojas.map(l => [
+        l.id,
+        `"${(l.numero || '').replace(/"/g, '""')}"`,
+        `"${(l.sala || '').replace(/"/g, '""')}"`,
+        `"${(l.nome || '').replace(/"/g, '""')}"`,
+        `"${(l.atividade || '').replace(/"/g, '""')}"`,
+        `"${(l.segmento || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csvContent = '﻿' + [headers.join(';')].concat(rows.map(r => r.join(';'))).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `lojas_top_center_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Modal Importar CSV
+    function openImportCSVModal() {
+      pendingCSVRows = [];
+      document.getElementById('csvFileInput').value = '';
+      document.getElementById('csvFileNameDisplay').textContent = 'Clique para selecionar o arquivo .csv';
+      document.getElementById('csvPreviewInfo').classList.add('hidden');
+      document.getElementById('btnConfirmImportCSV').disabled = true;
+      document.getElementById('importCSVModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeImportCSVModal() {
+      document.getElementById('importCSVModal').classList.add('hidden');
+    }
+
+    function handleCSVFileSelected(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      document.getElementById('csvFileNameDisplay').textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const text = evt.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 2) {
+          alert('Arquivo CSV vazio ou sem linhas de dados.');
+          return;
+        }
+
+        const delimiter = lines[0].includes(';') ? ';' : ',';
+        const headers = lines[0].split(delimiter).map(h => h.trim().toLowerCase().replace(/"/g, ''));
+        
+        const numIdx = headers.findIndex(h => h.includes('num') || h.includes('núm'));
+        const salaIdx = headers.findIndex(h => h.includes('sala'));
+        const nomeIdx = headers.findIndex(h => h.includes('nome') || h.includes('loja'));
+        const ativIdx = headers.findIndex(h => h.includes('ativ'));
+        const segIdx = headers.findIndex(h => h.includes('seg'));
+
+        pendingCSVRows = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^"|"$/g, ''));
+          const numero = numIdx !== -1 ? cols[numIdx] : cols[0];
+          const nome = nomeIdx !== -1 ? cols[nomeIdx] : cols[1];
+          const sala = salaIdx !== -1 ? cols[salaIdx] : '';
+          const atividade = ativIdx !== -1 ? cols[ativIdx] : '';
+          const segmento = segIdx !== -1 ? cols[segIdx] : '';
+
+          if (numero && nome) {
+            pendingCSVRows.push({ numero, sala, nome, atividade, segmento });
+          }
+        }
+
+        document.getElementById('csvPreviewCount').textContent = `${pendingCSVRows.length} lojas válidas prontas para importar!`;
+        document.getElementById('csvPreviewInfo').classList.remove('hidden');
+        document.getElementById('btnConfirmImportCSV').disabled = pendingCSVRows.length === 0;
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    async function executeImportCSV() {
+      if (pendingCSVRows.length === 0) return;
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+
+      const btn = document.getElementById('btnConfirmImportCSV');
+      btn.disabled = true;
+      btn.textContent = 'Importando...';
+
+      try {
+        const res = await fetch(API_BASE + '?action=import_lojas', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dashboard-password': pwd
+          },
+          body: JSON.stringify({ lojas: pendingCSVRows })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`Importação concluída com sucesso! ${data.count} lojas cadastradas.`);
+          closeImportCSVModal();
+          fetchLojas();
+        } else {
+          alert('Erro ao importar: ' + (data.error || 'Falha'));
+        }
+      } catch (err) {
+        alert('Erro ao conectar ao servidor para importar lojas.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Importar Dados';
+      }
+    }
+
+    // ==========================================
+    // EVOLUTION API (WHATSAPP STATUS & QR CODE)
+    // ==========================================
+    async function fetchEvolutionStatus(manual = false) {
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+
+      const icon = document.getElementById('evoRefreshIcon');
+      if (manual && icon) icon.classList.add('animate-spin');
+
+      try {
+        const res = await fetch(API_BASE + '?action=evolution_status', {
+          headers: { 'x-dashboard-password': pwd }
+        });
+        const data = await res.json();
+
+        const isConnected = Boolean(data.connected);
+        const dot = document.getElementById('evoStatusDot');
+        const text = document.getElementById('evoStatusText');
+        const account = document.getElementById('evoAccountName');
+        const phone = document.getElementById('evoPhoneNumber');
+        const inst = document.getElementById('evoInstanceName');
+        const connCard = document.getElementById('evoConnectedCard');
+        const qrContainer = document.getElementById('evoQrContainer');
+        const tabDot = document.getElementById('tabEvoDot');
+
+        if (account) account.textContent = data.name || 'Sac Top Center Ipanema';
+        if (phone) phone.textContent = data.botNumber || '(21) 98071-9848';
+        if (inst) inst.textContent = data.instance || 'topcenter_LG_teste';
+
+        if (isConnected) {
+          if (dot) dot.className = 'w-3 h-3 rounded-full bg-emerald-400 animate-pulse';
+          if (text) {
+            text.textContent = 'Conectado e Operacional';
+            text.className = 'text-sm font-bold text-emerald-400';
+          }
+          if (connCard) connCard.classList.remove('hidden');
+          if (qrContainer) qrContainer.classList.add('hidden');
+          if (tabDot) tabDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        } else {
+          if (dot) dot.className = 'w-3 h-3 rounded-full bg-rose-500';
+          if (text) {
+            text.textContent = 'Desconectado / Sem Sinal';
+            text.className = 'text-sm font-bold text-rose-400';
+          }
+          if (connCard) connCard.classList.add('hidden');
+          if (tabDot) tabDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+          // Automatically attempt to fetch QR code when disconnected
+          fetchEvolutionQR();
+        }
+      } catch (err) {
+        console.error('Erro ao verificar status da Evolution:', err);
+      } finally {
+        if (manual && icon) icon.classList.remove('animate-spin');
+      }
+    }
+
+    async function fetchEvolutionQR() {
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+
+      const btn = document.getElementById('btnEvoGetQr');
+      if (btn) btn.disabled = true;
+
+      try {
+        const res = await fetch(API_BASE + '?action=evolution_qr', {
+          headers: { 'x-dashboard-password': pwd }
+        });
+        const data = await res.json();
+
+        if (data.alreadyLoggedIn) {
+          alert('O WhatsApp já está conectado e operacional!');
+          fetchEvolutionStatus();
+          return;
+        }
+
+        const qrContainer = document.getElementById('evoQrContainer');
+        const connCard = document.getElementById('evoConnectedCard');
+        const img = document.getElementById('evoQrImage');
+
+        const qrSrc = data.base64 || (data.qrcode && data.qrcode.base64) || data.qr || data.qrcode || '';
+        if (qrSrc) {
+          img.src = qrSrc.startsWith('data:') ? qrSrc : 'data:image/png;base64,' + qrSrc;
+          if (qrContainer) qrContainer.classList.remove('hidden');
+          if (connCard) connCard.classList.add('hidden');
+        } else if (data.code) {
+          alert(`Código de pareamento gerado: ${data.code}`);
+        } else {
+          alert(data.error || 'Não foi possível gerar o QR Code no momento.');
+        }
+      } catch (err) {
+        alert('Erro ao conectar com o servidor para obter QR Code.');
+      } finally {
+        if (btn) btn.disabled = false;
+        lucide.createIcons();
+      }
+    }
+
+    async function confirmDisconnectEvolution() {
+      const confirmText = 'ATENÇÃO:\n\nTem certeza que deseja DESCONECTAR o WhatsApp atual?\n\nO aparelho do SAC será desvinculado e o robô deixará de responder até que um novo celular leia o QR Code.';
+      if (!confirm(confirmText)) return;
+
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+
+      try {
+        const res = await fetch(API_BASE + '?action=evolution_disconnect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dashboard-password': pwd
+          }
+        });
+        const data = await res.json();
+        alert('Instância desconectada. Gerando novo QR Code...');
+        fetchEvolutionStatus();
+        setTimeout(fetchEvolutionQR, 1500);
+      } catch (err) {
+        alert('Erro ao desconectar instância.');
+      }
+    }
+
   </script>
+
+  <!-- MODAL: CRIAR / EDITAR LOJA -->
+  <div id="lojaModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-wa-panel border border-wa-border rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-4 border-b border-wa-border mb-4">
+        <h3 id="lojaModalTitle" class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="store" class="w-5 h-5 text-emerald-400"></i>
+          <span>Nova Loja</span>
+        </h3>
+        <button onclick="closeLojaModal()" class="text-wa-muted hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="lojaForm" onsubmit="handleSaveLoja(event)" class="space-y-4">
+        <input type="hidden" id="lojaFormId" value="" />
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-wa-muted mb-1">Número *</label>
+            <input 
+              type="text" 
+              id="lojaFormNumero" 
+              required 
+              placeholder="Ex: 101, SS101, Quiosque 01" 
+              class="w-full bg-wa-card border border-wa-border rounded-xl px-3 py-2 text-xs text-white placeholder-wa-muted focus:outline-none focus:border-wa-lightgreen"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-wa-muted mb-1">Sala</label>
+            <input 
+              type="text" 
+              id="lojaFormSala" 
+              placeholder="Opcional" 
+              class="w-full bg-wa-card border border-wa-border rounded-xl px-3 py-2 text-xs text-white placeholder-wa-muted focus:outline-none focus:border-wa-lightgreen"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-wa-muted mb-1">Nome da Loja / Estabelecimento *</label>
+          <input 
+            type="text" 
+            id="lojaFormNome" 
+            required 
+            placeholder="Ex: Atelier do Aroma" 
+            class="w-full bg-wa-card border border-wa-border rounded-xl px-3 py-2 text-xs text-white placeholder-wa-muted focus:outline-none focus:border-wa-lightgreen"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-wa-muted mb-1">Atividade</label>
+            <select 
+              id="lojaFormAtividade" 
+              class="w-full bg-wa-card border border-wa-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-wa-lightgreen"
+            >
+              <option value="Comércio">Comércio</option>
+              <option value="Serviço">Serviço</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-wa-muted mb-1">Segmento</label>
+            <input 
+              type="text" 
+              id="lojaFormSegmento" 
+              placeholder="Ex: Vestuário, Cirurgia" 
+              class="w-full bg-wa-card border border-wa-border rounded-xl px-3 py-2 text-xs text-white placeholder-wa-muted focus:outline-none focus:border-wa-lightgreen"
+            />
+          </div>
+        </div>
+
+        <div id="lojaFormError" class="text-rose-400 text-xs hidden"></div>
+
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-wa-border">
+          <button 
+            type="button" 
+            onclick="closeLojaModal()" 
+            class="bg-wa-card hover:bg-wa-hover border border-wa-border text-slate-300 px-4 py-2 rounded-xl text-xs font-medium transition"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            id="lojaFormSubmitBtn" 
+            class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5 shadow-md"
+          >
+            <span>Salvar Loja</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: IMPORTAR CSV -->
+  <div id="importCSVModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-wa-panel border border-wa-border rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-4 border-b border-wa-border mb-4">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="upload" class="w-5 h-5 text-blue-400"></i>
+          <span>Importar Lojas via CSV</span>
+        </h3>
+        <button onclick="closeImportCSVModal()" class="text-wa-muted hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <p class="text-wa-muted">
+          Selecione um arquivo CSV com as colunas: <code>numero, sala, nome, atividade, segmento</code>.
+        </p>
+
+        <div class="border-2 border-dashed border-wa-border rounded-xl p-6 text-center hover:border-wa-lightgreen transition bg-wa-card cursor-pointer">
+          <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCSVFileSelected(event)" />
+          <label for="csvFileInput" class="cursor-pointer flex flex-col items-center gap-2">
+            <i data-lucide="file-spreadsheet" class="w-8 h-8 text-emerald-400"></i>
+            <span id="csvFileNameDisplay" class="font-medium text-white">Clique para selecionar o arquivo .csv</span>
+            <span class="text-[10px] text-wa-muted">Formato UTF-8 com separador vírgula ou ponto-e-vírgula</span>
+          </label>
+        </div>
+
+        <div id="csvPreviewInfo" class="hidden p-3 bg-wa-dark rounded-xl border border-wa-border text-slate-300">
+          <p class="font-bold text-emerald-400" id="csvPreviewCount">0 linhas prontas para importar</p>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button 
+            type="button" 
+            onclick="closeImportCSVModal()" 
+            class="bg-wa-card hover:bg-wa-hover border border-wa-border text-slate-300 px-4 py-2 rounded-xl text-xs font-medium transition"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="button" 
+            id="btnConfirmImportCSV" 
+            onclick="executeImportCSV()" 
+            disabled 
+            class="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl text-xs transition shadow-md"
+          >
+            Importar Dados
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
