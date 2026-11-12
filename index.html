@@ -2218,7 +2218,7 @@
     let currentConfigPausa = {
       tempo_pausa_minutos: 60,
       pausa_automatica_ativa: true,
-      telefones_autorizados: ["5521971231651", "5521980719848", "5521988948889"]
+      telefones_autorizados: ["5521971231651", "5521980719848", "5521994171755", "5521993962050", "5521988948889"]
     };
     let localTelefonesAutorizados = [];
 
@@ -2250,7 +2250,7 @@
       if (rawData && rawData.configPausa) {
         currentConfigPausa = { ...rawData.configPausa };
       }
-      localTelefonesAutorizados = [...(currentConfigPausa.telefones_autorizados || ["5521971231651", "5521980719848", "5521988948889"])];
+      localTelefonesAutorizados = [...(currentConfigPausa.telefones_autorizados || ["5521971231651", "5521980719848", "5521994171755", "5521993962050", "5521988948889"])];
       
       const inpTempo = document.getElementById('cfgTempoPausa');
       if (inpTempo) {
@@ -2287,7 +2287,7 @@
         let label = '';
         if (tel === '5521971231651') label = ' • SAC Top Center';
         else if (tel === '5521980719848') label = ' • Robô Top Center';
-        else if (tel === '5521988948889') label = ' • Desenvolvedor';
+        else if (tel === '5521994171755' || tel === '5521993962050' || tel === '5521988948889') label = ' • Desenvolvedor';
         
         return `
           <div class="flex items-center justify-between p-2 rounded-lg bg-wa-dark border border-wa-border/70 text-xs">
