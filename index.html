@@ -6,6 +6,16 @@
   <title>Top Center Ipanema — Monitor de Atendimento & IA</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // ==========================================
     // GESTÃO DE IMÓVEIS (ALUGUEL & VENDA)
     // ==========================================
@@ -1461,6 +1471,16 @@
     let currentFilter = 'todos';
     let autoRefreshInterval = null;
     let isFetching = false;
+
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
     function formatPhone(phone) {
       if (!phone) return '';
