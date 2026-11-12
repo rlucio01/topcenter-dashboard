@@ -652,6 +652,15 @@
         <i id="refreshIcon" data-lucide="refresh-cw" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
       </button>
 
+      <!-- BOTÃO CONFIGURAÇÕES DE ATENDIMENTO & PAUSA IA -->
+      <button 
+        onclick="openConfigPausaModal()" 
+        title="Configurações de Atendimento & Pausa IA"
+        class="bg-wa-card hover:bg-wa-hover border border-wa-border p-2 sm:p-2.5 rounded-xl text-wa-muted hover:text-amber-400 transition flex items-center justify-center shrink-0"
+      >
+        <i data-lucide="settings" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+      </button>
+
       <a 
         href="https://docs.google.com/spreadsheets/d/1YlIbSydfrZysPU75xVyifnaUucke6r0v3TE7vH44Q7Q" 
         target="_blank"
@@ -859,6 +868,23 @@
 
           <!-- ACTIONS -->
           <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- CONTROLE DE PAUSA DA IA NA CONVERSA -->
+            <div id="chatPauseContainer" class="flex items-center gap-1.5">
+              <div id="chatPauseBadge" class="hidden text-[10px] sm:text-[11px] px-2 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 items-center gap-1 font-semibold">
+                <i data-lucide="pause-circle" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span id="chatPauseBadgeText">IA Pausada</span>
+              </div>
+              <button 
+                id="toggleConvPauseBtn" 
+                onclick="toggleActiveConversationPause()" 
+                title="Pausar ou reativar IA para este cliente"
+                class="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-medium px-2.5 sm:px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1 shadow-sm"
+              >
+                <i id="toggleConvPauseIcon" data-lucide="pause" class="w-3.5 h-3.5"></i>
+                <span id="toggleConvPauseLabel" class="hidden sm:inline">Pausar IA</span>
+              </button>
+            </div>
+
             <!-- TOGGLE FICHA DO ATENDIMENTO ON MOBILE/TABLET -->
             <button 
               onclick="toggleMobileDetails(true)" 
@@ -1615,6 +1641,11 @@
         }
         updateKPIs(stats);
 
+        // Configuração de Pausa do SAC
+        if (data.configPausa) {
+          currentConfigPausa = { ...data.configPausa };
+        }
+
         // Defensive normalization of bot status
         const botStatus = data.botStatus || (data.kpis && data.kpis.botAtivo !== undefined ? { active: data.kpis.botAtivo } : { active: true });
         updateBotStatusUI(botStatus);
@@ -1811,6 +1842,12 @@
                 <span class="text-[9px] px-1.5 py-0.2 rounded-full border ${badgeColor} font-medium">
                   ${badgeText}
                 </span>
+                ${c.isPausado ? `
+                  <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold flex items-center gap-1 shrink-0" title="IA Pausada para este cliente (${c.pausaMinutosRestantes} min restantes)">
+                    <i data-lucide="pause-circle" class="w-2.5 h-2.5 text-amber-400"></i>
+                    Pausado (${c.pausaMinutosRestantes}m)
+                  </span>
+                ` : ''}
                 ${c.ticketCount > 0 ? `
                   <span class="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-medium flex items-center gap-1">
                     <i data-lucide="ticket" class="w-2.5 h-2.5"></i>
@@ -1906,6 +1943,7 @@
       document.getElementById('chatTitle').textContent = conv.nome || formatPhone(phone);
       document.getElementById('chatSubtitle').textContent = conv.lojaUnidade ? `Unidade: ${conv.lojaUnidade} • ${conv.telefone}` : conv.telefone;
       document.getElementById('chatPerfilBadge').textContent = conv.perfil || 'Indefinido';
+      updateActiveChatPauseUI();
       document.getElementById('waDirectLink').href = `https://wa.me/${phone}`;
 
       const avatar = document.getElementById('chatAvatar');
@@ -2172,6 +2210,265 @@
     function stopAutoRefresh() {
       if (autoRefreshInterval) clearInterval(autoRefreshInterval);
       autoRefreshInterval = null;
+    }
+
+    // ==========================================
+    // PAUSA INTELIGENTE DA IA & CONFIGURAÇÕES
+    // ==========================================
+    let currentConfigPausa = {
+      tempo_pausa_minutos: 60,
+      pausa_automatica_ativa: true,
+      telefones_autorizados: ["5521971231651", "5521980719848", "5521988948889"]
+    };
+    let localTelefonesAutorizados = [];
+
+    function updateCfgTempoDisplay(val) {
+      const mins = parseInt(val) || 60;
+      const disp = document.getElementById('cfgTempoDisplay');
+      if (!disp) return;
+      if (mins < 60) {
+        disp.textContent = `${mins} min`;
+      } else if (mins % 60 === 0) {
+        const hours = mins / 60;
+        disp.textContent = `${mins} min (${hours} ${hours === 1 ? 'hora' : 'horas'})`;
+      } else {
+        const hours = Math.floor(mins / 60);
+        const rem = mins % 60;
+        disp.textContent = `${mins} min (${hours}h ${rem}m)`;
+      }
+    }
+
+    function setCfgTempo(mins) {
+      const el = document.getElementById('cfgTempoPausa');
+      if (el) {
+        el.value = mins;
+        updateCfgTempoDisplay(mins);
+      }
+    }
+
+    function openConfigPausaModal() {
+      if (rawData && rawData.configPausa) {
+        currentConfigPausa = { ...rawData.configPausa };
+      }
+      localTelefonesAutorizados = [...(currentConfigPausa.telefones_autorizados || ["5521971231651", "5521980719848", "5521988948889"])];
+      
+      const inpTempo = document.getElementById('cfgTempoPausa');
+      if (inpTempo) {
+        inpTempo.value = currentConfigPausa.tempo_pausa_minutos || 60;
+        updateCfgTempoDisplay(inpTempo.value);
+      }
+      const chkPausa = document.getElementById('cfgPausaAutomatica');
+      if (chkPausa) {
+        chkPausa.checked = currentConfigPausa.pausa_automatica_ativa !== false;
+      }
+      renderTelefonesAutorizadosList();
+      
+      const feedback = document.getElementById('cfgPausaFeedback');
+      if (feedback) feedback.classList.add('hidden');
+      
+      document.getElementById('configPausaModal')?.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeConfigPausaModal() {
+      document.getElementById('configPausaModal')?.classList.add('hidden');
+    }
+
+    function renderTelefonesAutorizadosList() {
+      const container = document.getElementById('cfgTelefonesList');
+      if (!container) return;
+      
+      if (localTelefonesAutorizados.length === 0) {
+        container.innerHTML = `<p class="text-wa-muted italic text-[11px] py-1">Nenhum telefone autorizado cadastrado.</p>`;
+        return;
+      }
+      
+      container.innerHTML = localTelefonesAutorizados.map((tel, idx) => {
+        let label = '';
+        if (tel === '5521971231651') label = ' • SAC Top Center';
+        else if (tel === '5521980719848') label = ' • Robô Top Center';
+        else if (tel === '5521988948889') label = ' • Desenvolvedor';
+        
+        return `
+          <div class="flex items-center justify-between p-2 rounded-lg bg-wa-dark border border-wa-border/70 text-xs">
+            <div class="flex items-center gap-2">
+              <i data-lucide="phone" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span class="font-mono text-white font-semibold">${formatPhone(tel)}</span>
+              <span class="text-wa-muted text-[10px]">${label}</span>
+            </div>
+            <button 
+              type="button" 
+              onclick="removeTelefoneAutorizado(${idx})" 
+              title="Remover permissão"
+              class="p-1 rounded text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 transition"
+            >
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function addTelefoneAutorizado() {
+      const input = document.getElementById('cfgNovoTelefone');
+      if (!input) return;
+      const raw = input.value.replace(/\D/g, '');
+      if (!raw || raw.length < 10) {
+        alert('Digite um número de telefone válido com DDD (ex: 21971231651).');
+        return;
+      }
+      const clean = raw.startsWith('55') ? raw : ('55' + raw);
+      if (localTelefonesAutorizados.includes(clean)) {
+        alert('Este número já está na lista de autorizados.');
+        return;
+      }
+      localTelefonesAutorizados.push(clean);
+      input.value = '';
+      renderTelefonesAutorizadosList();
+    }
+
+    function removeTelefoneAutorizado(idx) {
+      localTelefonesAutorizados.splice(idx, 1);
+      renderTelefonesAutorizadosList();
+    }
+
+    async function handleSaveConfigPausa(e) {
+      e.preventDefault();
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+      
+      const tempo = parseInt(document.getElementById('cfgTempoPausa')?.value) || 60;
+      const pausaAuto = document.getElementById('cfgPausaAutomatica')?.checked ?? true;
+      const btn = document.getElementById('btnSaveConfigPausa');
+      const feedback = document.getElementById('cfgPausaFeedback');
+      
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Salvando...</span>`;
+      lucide.createIcons();
+      
+      try {
+        const res = await fetch(API_BASE + '?action=update_config_pausa', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dashboard-password': pwd
+          },
+          body: JSON.stringify({
+            tempo_pausa_minutos: tempo,
+            pausa_automatica_ativa: pausaAuto,
+            telefones_autorizados: localTelefonesAutorizados
+          })
+        });
+        
+        const data = await res.json();
+        if (res.ok && data.success) {
+          currentConfigPausa = data.config;
+          if (rawData) rawData.configPausa = data.config;
+          feedback.className = 'p-3 rounded-xl text-xs bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-2';
+          feedback.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i><span>Configurações atualizadas com sucesso!</span>`;
+          feedback.classList.remove('hidden');
+          lucide.createIcons();
+          setTimeout(() => {
+            closeConfigPausaModal();
+            fetchData(false);
+          }, 900);
+        } else {
+          feedback.className = 'p-3 rounded-xl text-xs bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-center gap-2';
+          feedback.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4"></i><span>Erro ao salvar: ${data.error || 'Falha desconhecida'}</span>`;
+          feedback.classList.remove('hidden');
+          lucide.createIcons();
+        }
+      } catch (err) {
+        feedback.className = 'p-3 rounded-xl text-xs bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-center gap-2';
+        feedback.innerHTML = `<i data-lucide="alert-circle" class="w-4 h-4"></i><span>Erro de conexão ao salvar configurações.</span>`;
+        feedback.classList.remove('hidden');
+        lucide.createIcons();
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i><span>Salvar Configurações</span>`;
+        lucide.createIcons();
+      }
+    }
+
+    async function toggleActiveConversationPause() {
+      if (!activePhone) return;
+      const pwd = getStoredPassword();
+      if (!pwd) return;
+      
+      const conv = (rawData.conversations || []).find(c => c.telefone === activePhone) || {};
+      const currentlyPaused = Boolean(conv.isPausado);
+      const targetPausar = !currentlyPaused;
+      const tempoMinutos = rawData.configPausa?.tempo_pausa_minutos || 60;
+      
+      const confirmMsg = targetPausar
+        ? `Deseja PAUSAR o robô IA para este cliente (${formatPhone(activePhone)}) por ${tempoMinutos} minutos?\n\nO robô deixará de responder a este cliente. As mensagens dele continuarão chegando aqui no painel em tempo real.`
+        : `Deseja REATIVAR o robô IA para este cliente (${formatPhone(activePhone)}) agora?\n\nO robô voltará a responder automaticamente a todas as mensagens deste contato.`;
+        
+      if (!confirm(confirmMsg)) return;
+      
+      const btn = document.getElementById('toggleConvPauseBtn');
+      if (btn) btn.disabled = true;
+      
+      try {
+        const res = await fetch(API_BASE + '?action=toggle_pausa_conversa', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dashboard-password': pwd
+          },
+          body: JSON.stringify({
+            phone: activePhone,
+            pausar: targetPausar,
+            minutos: tempoMinutos
+          })
+        });
+        
+        const data = await res.json();
+        if (res.ok && data.success) {
+          await fetchData(false);
+          updateActiveChatPauseUI();
+        } else {
+          alert('Erro ao alterar status de pausa da IA: ' + (data.error || 'Falha na requisição'));
+        }
+      } catch (err) {
+        alert('Erro de conexão ao alterar status de pausa da conversa.');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function updateActiveChatPauseUI() {
+      if (!activePhone) return;
+      const conv = (rawData.conversations || []).find(c => c.telefone === activePhone) || {};
+      const isPausado = Boolean(conv.isPausado);
+      const minsRestantes = conv.pausaMinutosRestantes || 0;
+      const tempoConfig = rawData.configPausa?.tempo_pausa_minutos || 60;
+      
+      const badge = document.getElementById('chatPauseBadge');
+      const badgeText = document.getElementById('chatPauseBadgeText');
+      const btn = document.getElementById('toggleConvPauseBtn');
+      const btnIcon = document.getElementById('toggleConvPauseIcon');
+      const btnLabel = document.getElementById('toggleConvPauseLabel');
+      
+      if (!badge || !btn) return;
+      
+      if (isPausado) {
+        badge.className = 'flex text-[10px] sm:text-[11px] px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 items-center gap-1.5 font-semibold shadow-sm';
+        badgeText.textContent = minsRestantes > 1 ? `IA Pausada (${minsRestantes}m restantes)` : `IA Pausada (1m restante)`;
+        
+        btn.className = 'bg-emerald-600/80 hover:bg-emerald-600 text-white font-medium px-2.5 sm:px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1 shadow-sm';
+        btn.title = 'Clique para reativar o robô IA para este cliente';
+        if (btnIcon) btnIcon.setAttribute('data-lucide', 'play');
+        if (btnLabel) btnLabel.textContent = 'Reativar IA';
+      } else {
+        badge.className = 'hidden';
+        btn.className = 'bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-medium px-2.5 sm:px-3 py-1.5 rounded-xl text-xs transition flex items-center gap-1 shadow-sm';
+        btn.title = `Clique para pausar o robô IA para este cliente por ${tempoConfig} minutos`;
+        if (btnIcon) btnIcon.setAttribute('data-lucide', 'pause');
+        if (btnLabel) btnLabel.textContent = `Pausar IA (${tempoConfig}m)`;
+      }
+      lucide.createIcons();
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -3040,6 +3337,145 @@
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIGURAÇÕES DE ATENDIMENTO & PAUSA IA -->
+  <div id="configPausaModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-wa-panel border border-wa-border rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-4 border-b border-wa-border mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Configurações de Atendimento</h3>
+            <p class="text-xs text-wa-muted">Regras de pausa da IA e controle de acesso SAC</p>
+          </div>
+        </div>
+        <button onclick="closeConfigPausaModal()" class="text-wa-muted hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="configPausaForm" onsubmit="handleSaveConfigPausa(event)" class="space-y-4 text-xs">
+        <!-- 1. INTERVALO DE PAUSA -->
+        <div class="p-4 bg-wa-card border border-wa-border/80 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="font-semibold text-white flex items-center gap-1.5">
+              <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+              <span>Tempo de Pausa da IA (Minutos)</span>
+            </label>
+            <span id="cfgTempoDisplay" class="text-amber-300 font-mono font-bold text-xs bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">60 min (1 hora)</span>
+          </div>
+          <p class="text-wa-muted leading-relaxed">
+            Quando o atendente humano responde a um cliente no WhatsApp ou no painel, a IA silencia automaticamente para esse contato durante este período.
+          </p>
+          <div class="flex items-center gap-3 pt-1">
+            <input 
+              type="number" 
+              id="cfgTempoPausa" 
+              min="5" 
+              max="1440" 
+              step="5" 
+              value="60"
+              oninput="updateCfgTempoDisplay(this.value)"
+              class="w-24 bg-wa-dark border border-wa-border rounded-xl px-3 py-2 text-sm text-white font-bold text-center focus:outline-none focus:border-amber-400"
+            />
+            <div class="flex items-center gap-1.5 text-[11px] text-wa-muted">
+              <button type="button" onclick="setCfgTempo(30)" class="px-2 py-1 rounded bg-wa-dark border border-wa-border hover:border-wa-lightgreen hover:text-white transition">30m</button>
+              <button type="button" onclick="setCfgTempo(60)" class="px-2 py-1 rounded bg-wa-dark border border-wa-border hover:border-wa-lightgreen hover:text-white transition">1h</button>
+              <button type="button" onclick="setCfgTempo(120)" class="px-2 py-1 rounded bg-wa-dark border border-wa-border hover:border-wa-lightgreen hover:text-white transition">2h</button>
+              <button type="button" onclick="setCfgTempo(240)" class="px-2 py-1 rounded bg-wa-dark border border-wa-border hover:border-wa-lightgreen hover:text-white transition">4h</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. TOGGLE PAUSA AUTOMÁTICA -->
+        <div class="p-4 bg-wa-card border border-wa-border/80 rounded-xl space-y-2">
+          <label class="flex items-start gap-3 cursor-pointer">
+            <input 
+              type="checkbox" 
+              id="cfgPausaAutomatica" 
+              checked 
+              class="mt-0.5 rounded bg-wa-dark border-wa-border text-wa-lightgreen focus:ring-0 w-4 h-4"
+            />
+            <div class="space-y-1">
+              <span class="font-semibold text-white block">Pausa Automática ao Responder</span>
+              <p class="text-wa-muted leading-relaxed">
+                Ao enviar uma resposta humana (via WhatsApp Web, celular ou painel), pausar o robô automaticamente para aquela conversa pelo tempo configurado.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <!-- 3. TELEFONES AUTORIZADOS -->
+        <div class="p-4 bg-wa-card border border-wa-border/80 rounded-xl space-y-3">
+          <div>
+            <label class="font-semibold text-white flex items-center gap-1.5 mb-1">
+              <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+              <span>Segurança: Telefones Autorizados a Pausar o Robô</span>
+            </label>
+            <p class="text-wa-muted leading-relaxed">
+              Apenas esses números têm permissão para enviar comandos de controle (#pausar, #voltar) no WhatsApp. Visitantes comuns não conseguem pausar a IA.
+            </p>
+          </div>
+
+          <!-- LISTA DE TELEFONES CADASTRADOS -->
+          <div id="cfgTelefonesList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+            <!-- Renderizado via JS -->
+          </div>
+
+          <!-- ADICIONAR NOVO TELEFONE -->
+          <div class="flex items-center gap-2 pt-2 border-t border-wa-border/60">
+            <input 
+              type="text" 
+              id="cfgNovoTelefone" 
+              placeholder="Ex: (21) 97123-1651 ou 55219..."
+              class="flex-1 bg-wa-dark border border-wa-border rounded-xl px-3 py-2 text-xs text-white placeholder-wa-muted focus:outline-none focus:border-emerald-400"
+            />
+            <button 
+              type="button" 
+              onclick="addTelefoneAutorizado()"
+              class="bg-emerald-600/80 hover:bg-emerald-600 text-white font-medium px-3 py-2 rounded-xl text-xs transition flex items-center gap-1 shrink-0"
+            >
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Adicionar</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- COMANDOS DISPONÍVEIS -->
+        <div class="p-3 bg-indigo-950/30 border border-indigo-500/20 rounded-xl text-indigo-200/90 text-[11px] space-y-1">
+          <p class="font-semibold text-indigo-300 flex items-center gap-1">
+            <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+            <span>Comandos Rápidos no WhatsApp:</span>
+          </p>
+          <p>• <code>#pausar</code> : Silencia a IA nesta conversa pelo tempo definido.</p>
+          <p>• <code>#voltar</code> ou <code>#bot</code> : Reativa a IA imediatamente para este cliente.</p>
+        </div>
+
+        <div id="cfgPausaFeedback" class="hidden p-3 rounded-xl text-xs"></div>
+
+        <!-- FOOTER ACTIONS -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-wa-border">
+          <button 
+            type="button" 
+            onclick="closeConfigPausaModal()" 
+            class="bg-wa-card hover:bg-wa-hover border border-wa-border text-slate-300 px-4 py-2 rounded-xl text-xs font-medium transition"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            id="btnSaveConfigPausa"
+            class="bg-wa-lightgreen hover:bg-emerald-600 text-white font-semibold px-4 py-2 rounded-xl text-xs transition shadow-md flex items-center gap-1.5"
+          >
+            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+            <span>Salvar Configurações</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
