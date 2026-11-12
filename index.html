@@ -1434,8 +1434,24 @@
         const data = await res.json();
         rawData = data;
 
-        updateKPIs(data.stats);
-        updateBotStatusUI(data.botStatus);
+        // Defensive normalization of stats / KPIs
+        const stats = data.stats || {};
+        if (data.kpis) {
+          if (stats.totalInteracoes === undefined) stats.totalInteracoes = data.kpis.totalInteracoes;
+          if (stats.totalContatos === undefined) stats.totalContatos = data.kpis.totalContatos;
+          if (stats.totalChamados === undefined) stats.totalChamados = data.kpis.totalChamados;
+          if (stats.totalSAC === undefined) stats.totalSAC = data.kpis.sacHumano ?? data.kpis.totalSAC;
+        }
+        updateKPIs(stats);
+
+        // Defensive normalization of bot status
+        const botStatus = data.botStatus || (data.kpis && data.kpis.botAtivo !== undefined ? { active: data.kpis.botAtivo } : { active: true });
+        updateBotStatusUI(botStatus);
+
+        // Defensive normalization of conversations list
+        if (!rawData.conversations && rawData.conversas) {
+          rawData.conversations = rawData.conversas;
+        }
         renderConversationsList();
         if (allImoveis.length === 0) fetchImoveis();
 
